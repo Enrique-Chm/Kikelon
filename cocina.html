@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDS PRO - Dolce Mia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background-color: #0f172a; 
+            color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            overflow: hidden; 
+        }
+        /* Animación de Parpadeo para Órdenes Tardías */
+        @keyframes flashRed {
+            0%, 100% { border-color: #ef4444; box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+            50% { border-color: #b91c1c; box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+        }
+        .delayed-order { animation: flashRed 2s infinite; border: 2px solid #ef4444 !important; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in { animation: slideIn 0.3s ease-out; }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        .custom-scroll::-webkit-scrollbar-thumb { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <div id="start-overlay" class="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+        <h1 class="text-5xl font-black text-red-600 mb-2 tracking-tighter">DOLCE MIA <span class="text-white">KDS</span></h1>
+        <p class="text-gray-400 mb-8 text-lg">Sistema de Gestión de Cocina</p>
+        <button onclick="initSystem()" class="px-8 py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-xl shadow-lg transition transform hover:scale-105 flex items-center gap-3">
+            <span>🔊</span> INICIAR TURNO
+        </button>
+    </div>
+
+    <header class="bg-slate-900 p-3 flex justify-between items-center border-b border-slate-700 shadow-md z-10 h-16">
+        <div class="flex items-center gap-6">
+            <h1 class="text-2xl font-black text-red-500 tracking-wider flex items-center gap-2">
+                <span>🔥</span> KDS
+            </h1>
+            <span id="clock" class="text-xl text-slate-300 font-mono bg-slate-800 px-3 py-1 rounded border border-slate-700">00:00</span>
+        </div>
+        
+        <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700 shadow-inner">
+            <button onclick="setStationFilter('all')" id="btn-station-all" class="px-4 py-1 rounded text-sm font-bold bg-slate-600 text-white transition">TODO</button>
+            <button onclick="setStationFilter('cocina')" id="btn-station-cocina" class="px-4 py-1 rounded text-sm font-bold text-slate-400 hover:text-white transition">🍳 COCINA</button>
+            <button onclick="setStationFilter('barra')" id="btn-station-barra" class="px-4 py-1 rounded text-sm font-bold text-slate-400 hover:text-white transition">🍹 BARRA</button>
+        </div>
+
+        <div class="flex gap-3">
+            <button onclick="toggleAllDay()" class="px-3 py-1 bg-blue-900/30 hover:bg-blue-800 text-blue-300 text-sm font-bold rounded border border-blue-800 transition flex items-center gap-2">
+                📊 All-Day
+            </button>
+            <button onclick="openHistory()" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-bold rounded border border-gray-600 transition flex items-center gap-2">
+                ↩️ Historial
+            </button>
+            <button onclick="clearAllData()" class="p-2 text-gray-600 hover:text-red-500 transition" title="Borrar Todo">
+                🗑️
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        
+        <aside id="all-day-panel" class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 transform -translate-x-full absolute h-full z-20 shadow-2xl lg:relative lg:translate-x-0 lg:shadow-none">
+            <div class="p-3 bg-slate-800 border-b border-slate-700 font-bold text-center text-blue-400 tracking-wider text-sm">
+                RESUMEN ACTIVO
+            </div>
+            <div id="all-day-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+                </div>
+            <div class="p-2 border-t border-slate-800 text-center text-xs text-slate-500">
+                Total Pendiente: <span id="total-pending-items" class="text-white font-bold">0</span>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-hidden p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950 relative">
+            
+            <div class="flex flex-col bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-xl">
+                <div class="p-2 bg-slate-800/80 backdrop-blur border-b border-slate-700 flex justify-between items-center px-4">
+                    <span class="font-bold text-blue-400 uppercase tracking-wider text-sm">Nuevas</span>
+                    <span id="count-pending" class="bg-blue-900/50 text-blue-200 px-2 py-0.5 rounded text-xs font-mono">0</span>
+                </div>
+                <div id="col-pending" class="flex-1 overflow-y-auto p-2 space-y-3 custom-scroll"></div>
+            </div>
+
+            <div class="flex flex-col bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-xl">
+                <div class="p-2 bg-slate-800/80 backdrop-blur border-b border-slate-700 flex justify-between items-center px-4">
+                    <span class="font-bold text-yellow-400 uppercase tracking-wider text-sm">En Fuego</span>
+                    <span id="count-cooking" class="bg-yellow-900/50 text-yellow-200 px-2 py-0.5 rounded text-xs font-mono">0</span>
+                </div>
+                <div id="col-cooking" class="flex-1 overflow-y-auto p-2 space-y-3 custom-scroll"></div>
+            </div>
+
+            <div class="flex flex-col bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-xl">
+                <div class="p-2 bg-slate-800/80 backdrop-blur border-b border-slate-700 flex justify-between items-center px-4">
+                    <span class="font-bold text-green-400 uppercase tracking-wider text-sm">Listos</span>
+                    <span id="count-ready" class="bg-green-900/50 text-green-200 px-2 py-0.5 rounded text-xs font-mono">0</span>
+                </div>
+                <div id="col-ready" class="flex-1 overflow-y-auto p-2 space-y-3 custom-scroll"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="history-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 rounded-2xl w-full max-w-2xl h-[80vh] flex flex-col shadow-2xl border border-slate-600">
+            <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-white">Historial de Órdenes</h3>
+                <button onclick="document.getElementById('history-modal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl">✕</button>
+            </div>
+            <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+        </div>
+    </div>
+
+    <div id="stock-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 p-6 rounded-xl max-w-sm text-center border border-red-500 shadow-2xl">
+            <h3 class="text-xl font-bold text-red-500 mb-2">⛔ Marcar Agotado</h3>
+            <p class="text-gray-300 mb-6">¿Confirmar que <span id="stock-item-name" class="font-bold text-white">...</span> se acabó?</p>
+            <div class="flex gap-4 justify-center">
+                <button onclick="document.getElementById('stock-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-600 rounded hover:bg-slate-500 transition">Cancelar</button>
+                <button id="confirm-86-btn" class="px-4 py-2 bg-red-600 font-bold rounded hover:bg-red-500 transition text-white">Confirmar 86</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="cocina.js"></script>
+</body>
+</html>
