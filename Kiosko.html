@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosco Dolce Mia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* --- ESTILOS VISUALES Y SCROLLBAR --- */
+        body { overflow: hidden; background-color: #f3f4f6; }
+
+        /* Scrollbar Rojo Personalizado */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: #e5e7eb; }
+        ::-webkit-scrollbar-thumb { background-color: #dc2626; border-radius: 5px; border: 2px solid #e5e7eb; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #b91c1c; }
+
+        /* Layout */
+        .kiosk-grid { display: grid; grid-template-columns: 1fr; height: 100vh; width: 100vw; overflow: hidden; }
+        @media (min-width: 1024px) { .kiosk-grid { grid-template-columns: 70% 30%; } }
+        
+        /* Utilidad para ocultar scrollbar horizontal en chips */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="font-sans text-gray-800">
+
+    <div id="phone-input-screen" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-8 text-center">
+        <h1 class="text-6xl font-extrabold text-red-600 mb-4 cursor-pointer hover:scale-105 transition select-none" id="app-title-login">Dolce mia</h1>
+        <p class="text-2xl text-gray-600 mb-8">¡Bienvenido! Ingresa tu teléfono para pedir.</p>
+        <div class="w-full max-w-sm">
+            <input type="tel" id="phone-number-input" placeholder="Ej: 667 123 4567" maxlength="10"
+                   class="w-full p-4 mb-4 text-2xl text-center border-4 border-gray-200 rounded-xl focus:border-red-500 outline-none transition">
+            <button id="start-order-button" disabled
+                    class="w-full py-4 text-2xl font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed shadow-lg">
+                COMENZAR PEDIDO
+            </button>
+            <p id="phone-error-message" class="text-red-500 mt-3 hidden font-bold text-sm">Número inválido (mín. 8 dígitos).</p>
+        </div>
+    </div>
+    
+    <div id="kiosk-app" class="kiosk-grid hidden">
+        
+        <div class="bg-white flex flex-col h-full overflow-hidden relative shadow-xl z-10">
+            <div class="p-6 pb-2 flex justify-between items-center flex-shrink-0 bg-white z-20">
+                <h1 class="text-4xl lg:text-5xl font-extrabold text-red-600 cursor-pointer select-none" id="app-title-kiosk">Dolce mia</h1>
+                <div class="text-right">
+                    <p class="text-gray-400 text-xs uppercase tracking-widest font-bold">Hola,</p>
+                    <p class="font-bold text-gray-800 text-lg truncate max-w-[200px]"><span id="current-client-name">...</span></p>
+                </div>
+            </div>
+            
+            <div class="px-6 pb-4 pt-2 bg-white flex-shrink-0 border-b border-gray-100 z-20">
+                <div id="category-bar" class="flex space-x-3 overflow-x-auto pb-2 no-scrollbar"></div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto bg-gray-50 p-6 min-h-0 relative">
+                <div id="menu-container" class="pb-24"></div>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 text-white flex flex-col h-full overflow-hidden relative z-20 shadow-2xl border-l border-slate-700">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center flex-shrink-0 bg-slate-900">
+                <h2 class="text-3xl font-bold flex items-center gap-3">🛒 Tu Pedido</h2>
+                <button id="clear-cart-button" class="px-3 py-1 text-sm font-bold rounded bg-red-600 hover:bg-red-700 disabled:opacity-50" disabled>Vaciar</button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-4 min-h-0 bg-slate-900 custom-scroll">
+                <div id="cart-list" class="space-y-3">
+                    <div id="empty-cart-message" class="text-slate-500 text-center mt-20 flex flex-col items-center opacity-60">
+                        <span class="text-5xl mb-4">🍽️</span>
+                        <p class="text-lg">Tu carrito está vacío.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-slate-800 border-t border-slate-700 flex-shrink-0 shadow-lg z-30">
+                <div class="space-y-1 mb-4 text-slate-300">
+                    <div class="flex justify-between text-sm"><span>Subtotal:</span><span id="subtotal-display" class="font-mono">$0.00</span></div>
+                    <div class="flex justify-between text-sm"><span>Impuesto (16%):</span><span id="tax-display" class="font-mono">$0.00</span></div>
+                    <div class="flex justify-between text-3xl font-extrabold text-white pt-2 border-t border-slate-600 mt-2">
+                        <span>Total:</span><span id="total-display" class="text-yellow-400 font-mono">$0.00</span>
+                    </div>
+                </div>
+                <button id="checkout-button" class="w-full py-4 text-xl font-bold rounded-xl bg-red-600 hover:bg-red-700 hover:scale-[1.02] active:scale-95 transition shadow-xl disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed" disabled>
+                    PAGAR Y ENVIAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-screen" class="hidden fixed inset-0 bg-gray-100 z-50 overflow-hidden flex">
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col hidden lg:flex">
+            <div class="p-6 border-b border-gray-100">
+                <h2 class="text-2xl font-extrabold text-red-600 flex items-center gap-2">👨‍🍳 Cocina</h2>
+                <p class="text-xs text-gray-400 mt-1">Panel de Administración</p>
+            </div>
+            <nav class="flex-1 overflow-y-auto p-4 space-y-1">
+                <p class="text-xs font-bold text-gray-400 uppercase mb-2 px-2">Menú</p>
+                <button onclick="filterAdminCategory('Todos')" class="w-full text-left px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-100">🍽️ Ver Todo</button>
+                <div id="admin-category-sidebar" class="space-y-1 mt-2"></div>
+            </nav>
+            <div class="p-4 border-t border-gray-200">
+                <button id="save-admin-button" class="w-full py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-black transition flex items-center justify-center gap-2">🚪 Salir del Panel</button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            <header class="bg-white border-b border-gray-200 p-6 flex justify-between items-center shadow-sm z-10">
+                <div class="flex items-center gap-4 flex-1">
+                    <div class="relative w-full max-w-md">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+                        <input type="text" id="admin-search" placeholder="Buscar platillo..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-red-500 outline-none transition">
+                    </div>
+                </div>
+                <button id="add-item-button" class="py-2.5 px-6 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow-md transition flex items-center gap-2">➕ Nuevo Platillo</button>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><p class="text-xs text-gray-500 uppercase font-bold">Total Platillos</p><p class="text-2xl font-extrabold text-gray-800" id="stat-total-items">0</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100"><p class="text-xs text-gray-500 uppercase font-bold">Categorías</p><p class="text-2xl font-extrabold text-blue-600" id="stat-total-cats">0</p></div>
+                </div>
+                <div class="flex justify-between items-end mb-4">
+                    <h3 class="text-xl font-bold text-gray-800" id="admin-current-view">Todos los Platillos</h3>
+                    <span class="text-xs text-gray-500" id="admin-showing-count">Mostrando 0 items</span>
+                </div>
+                <div id="admin-menu-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 pb-10"></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="edit-item-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="bg-gray-800 text-white p-6 flex justify-between items-center flex-shrink-0">
+                <div><h3 class="text-2xl font-bold" id="edit-modal-title">Editar Artículo</h3><p class="text-gray-400 text-sm">Configura detalles y opciones.</p></div>
+                <button id="cancel-edit-button" class="text-gray-400 hover:text-white transition text-2xl">✕</button>
+            </div>
+            
+            <div class="flex-grow overflow-hidden flex flex-col lg:flex-row bg-gray-50">
+                <div class="w-full lg:w-1/2 p-6 overflow-y-auto border-r border-gray-200">
+                    <h4 class="text-lg font-bold text-red-600 mb-4 border-b pb-2">📦 Información Básica</h4>
+                    <div class="space-y-5">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre</label><input type="text" id="edit-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-bold"></div>
+                            <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Precio</label><input type="number" id="edit-price" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-mono"></div>
+                        </div>
+                        <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Descripción</label><textarea id="edit-description" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"></textarea></div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Categoría</label>
+                            <div class="flex flex-wrap gap-2 mb-2" id="category-chips"></div>
+                            <input type="text" id="edit-category" class="w-full p-2 border-b-2 border-gray-300 focus:border-red-500 outline-none bg-transparent" placeholder="Nueva categoría...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Etiquetas (Tags)</label>
+                            <div class="flex flex-wrap gap-3">
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border shadow-sm"><input type="checkbox" class="edit-tag-checkbox accent-yellow-500" value="Recomendación del Chef"> 👨‍🍳 Chef</label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border shadow-sm"><input type="checkbox" class="edit-tag-checkbox accent-green-500" value="Nuevo"> ✨ Nuevo</label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border shadow-sm"><input type="checkbox" class="edit-tag-checkbox accent-blue-500" value="Platillo saludable"> 🥗 Saludable</label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border shadow-sm"><input type="checkbox" class="edit-tag-checkbox accent-red-500" value="Puede demorar un poco más"> ⏱️ Demora</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full lg:w-1/2 p-6 overflow-y-auto bg-gray-100">
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-300 pb-2">
+                        <h4 class="text-lg font-bold text-blue-600">🛠️ Personalización</h4>
+                        <select id="quick-add-modifier" class="text-xs p-2 rounded border border-blue-300 bg-blue-50 text-blue-800 outline-none cursor-pointer"></select>
+                    </div>
+                    <div id="edit-modifiers-container" class="space-y-4 min-h-[200px]"></div>
+                    <button id="add-modifier-group-button" class="mt-6 w-full py-3 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">➕ Crear Grupo Manual</button>
+                </div>
+            </div>
+            <div class="p-4 bg-white border-t flex justify-between items-center flex-shrink-0">
+                <button id="delete-item-button" class="text-red-500 hover:text-red-700 font-bold px-4 py-2 hover:bg-red-50 rounded transition">🗑️ Eliminar</button>
+                <button id="save-item-button" class="px-8 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition shadow-lg">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="registration-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-2xl w-full max-w-lg shadow-2xl">
+            <h3 class="text-2xl font-bold text-red-600 mb-1">¡Hola!</h3>
+            <p class="text-gray-500 mb-6">Completa tus datos para agilizar tu pedido.</p>
+            <input type="text" id="reg-name" placeholder="Tu Nombre" class="w-full p-3 border-2 border-gray-300 rounded-lg mb-4">
+            <div class="flex gap-4 mb-4"><label><input type="radio" name="reg-gender" value="M"> Masc.</label><label><input type="radio" name="reg-gender" value="F"> Fem.</label></div>
+            <div class="flex gap-4 mb-6"><label><input type="radio" name="reg-age" value="18-30"> 18-30</label><label><input type="radio" name="reg-age" value="31+"> 31+</label></div>
+            <button id="register-button" disabled class="w-full py-3 bg-red-600 text-white font-bold rounded-lg disabled:bg-gray-300">Guardar</button>
+        </div>
+    </div>
+
+    <div id="customization-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white p-0 rounded-2xl w-full max-w-lg h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-6 border-b flex-shrink-0 bg-gray-50"><h3 class="text-2xl font-bold text-gray-800" id="custom-item-name">...</h3><p class="text-gray-500" id="custom-base-price">$0.00</p></div>
+            <div id="customization-content" class="flex-grow overflow-y-auto p-6 space-y-6"></div>
+            <div class="p-6 border-t bg-gray-50 flex-shrink-0"><div class="flex justify-between mb-4 font-bold text-xl"><span>Total:</span> <span id="custom-total-price" class="text-red-600">$0.00</span></div><div class="flex gap-3"><button id="cancel-custom-button" class="flex-1 py-3 bg-gray-200 rounded-lg">Cancelar</button><button id="confirm-custom-button" class="flex-1 py-3 bg-red-600 text-white rounded-lg">Añadir</button></div></div>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[70] flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white p-8 rounded-3xl w-full max-w-md text-center shadow-2xl">
+            <h3 class="text-3xl font-bold mb-6">Total: <span id="payment-total" class="text-red-600"></span></h3>
+            <div id="payment-ui" class="space-y-3">
+                <button onclick="processPayment()" class="w-full py-4 bg-green-600 text-white font-bold rounded-xl">💳 Enviar a Caja</button>
+                <button onclick="closePayment()" class="w-full py-4 bg-gray-200 font-bold rounded-xl">Volver</button>
+            </div>
+            <div id="payment-success" class="hidden">
+                <p class="text-4xl mb-4">✅</p><p class="text-xl font-bold text-green-700">Orden Enviada</p><p class="text-gray-500">Paga en caja para liberar tu comida.</p>
+                <p class="font-mono text-2xl font-bold mt-2 bg-gray-100 p-2 rounded">#<span id="order-number">000</span></p>
+                <button onclick="resetApp()" class="mt-6 w-full py-3 bg-red-600 text-white font-bold rounded-xl">Nuevo Cliente</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="Kiosko.js"></script>
+</body>
+</html>
