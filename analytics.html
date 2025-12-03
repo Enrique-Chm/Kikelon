@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics ULTIMATE - Dolce Mia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
+        
+        /* Estilos de Pestañas */
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: #1e293b; background-color: #f1f5f9; }
+        .tab-active { 
+            color: #dc2626; 
+            border-bottom-color: #dc2626; 
+            background-color: #fef2f2;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="bg-white border-b border-gray-200 px-6 py-3 flex flex-col md:flex-row justify-between items-center shadow-sm z-20 gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <span>📊</span> Dashboard Gerencial
+            </h1>
+        </div>
+
+        <div class="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+            <span class="text-xs font-bold text-gray-400 uppercase px-2">Periodo:</span>
+            <input type="date" id="date-start" class="text-sm p-1.5 border border-gray-300 rounded outline-none focus:border-red-500 text-gray-600">
+            <span class="text-gray-400">-</span>
+            <input type="date" id="date-end" class="text-sm p-1.5 border border-gray-300 rounded outline-none focus:border-red-500 text-gray-600">
+            <button onclick="applyDateFilter()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded text-sm font-bold transition shadow-sm">
+                Filtrar
+            </button>
+            <button onclick="resetDateFilter()" class="text-gray-500 hover:text-gray-800 px-2 text-xs underline">
+                Hoy
+            </button>
+        </div>
+
+        <div class="flex gap-2">
+            <button onclick="downloadCSV()" class="px-3 py-2 bg-green-600 text-white text-sm font-bold rounded hover:bg-green-700 transition flex items-center gap-1 shadow-sm">
+                <span>📥</span> Excel
+            </button>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-gray-200 px-6 flex gap-4 shadow-sm z-10">
+        <button onclick="switchTab('sales')" id="tab-btn-sales" class="tab-btn tab-active">💰 Ventas y Menú</button>
+        <button onclick="switchTab('ops')" id="tab-btn-ops" class="tab-btn">⏱️ Operaciones</button>
+        <button onclick="switchTab('customers')" id="tab-btn-customers" class="tab-btn">👥 Clientes y Tendencias</button>
+    </nav>
+
+    <main class="flex-1 overflow-y-auto p-6 relative bg-slate-50">
+        
+        <div id="view-sales" class="space-y-6 animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Ventas Totales</p>
+                    <p class="text-3xl font-black text-gray-800 mt-1" id="kpi-sales">$0.00</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Total Órdenes</p>
+                    <p class="text-3xl font-black text-blue-600 mt-1" id="kpi-orders">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Ticket Promedio</p>
+                    <p class="text-3xl font-black text-purple-600 mt-1" id="kpi-ticket">$0.00</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Items Vendidos</p>
+                    <p class="text-3xl font-black text-orange-500 mt-1" id="kpi-items">0</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-2">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🏆 Top 10 Más Vendidos</h3>
+                    <div class="relative h-72 w-full"><canvas id="chartTopProducts"></canvas></div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🍕 Mix de Categorías</h3>
+                    <div class="relative h-60 w-full flex justify-center"><canvas id="chartCategories"></canvas></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>🥓</span> Rendimiento de Extras (Upselling)
+                </h3>
+                <div class="relative h-64 w-full"><canvas id="chartModifiers"></canvas></div>
+                <p class="text-xs text-gray-400 mt-2 text-center">Muestra qué "Extras" o modificaciones eligen más los clientes.</p>
+            </div>
+        </div>
+
+        <div id="view-ops" class="space-y-6 hidden animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-500">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Tiempo Promedio Global</p>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <p class="text-4xl font-black text-slate-800" id="kpi-avg-time">0</p>
+                        <span class="text-sm text-gray-500 font-bold">min</span>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-red-500">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Pedidos Retrasados (>20m)</p>
+                    <p class="text-4xl font-black text-red-600 mt-1" id="kpi-delayed-pct">0%</p>
+                    <p class="text-xs text-red-400 font-bold mt-1" id="kpi-delayed-count">0 órdenes</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-orange-500">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Hora Pico</p>
+                    <p class="text-4xl font-black text-orange-500 mt-1" id="kpi-peak-hour">--:--</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🆚 Eficiencia: Barra vs Cocina</h3>
+                    <p class="text-sm text-gray-500 mb-4">¿Quién tarda más en liberar sus items?</p>
+                    <div class="relative h-64 w-full"><canvas id="chartStations"></canvas></div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🚦 Salud del Servicio</h3>
+                    <div class="relative h-64 w-full flex justify-center"><canvas id="chartSla"></canvas></div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-4 bg-red-50 border-b border-red-100 text-red-700 font-bold text-sm uppercase">
+                    🐢 Top 5 Pedidos Más Lentos
+                </div>
+                <table class="w-full text-left text-sm">
+                    <thead class="text-gray-500 border-b"><tr><th class="p-3">ID</th><th class="p-3">Hora</th><th class="p-3">Duración</th><th class="p-3">Items</th></tr></thead>
+                    <tbody id="table-slowest" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-customers" class="space-y-6 hidden animate-fade-in">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">👥 Distribución por Género</h3>
+                    <div class="relative h-60 w-full flex justify-center"><canvas id="chartGender"></canvas></div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🎂 Rangos de Edad</h3>
+                    <div class="relative h-60 w-full flex justify-center"><canvas id="chartAge"></canvas></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">💸 Gasto Promedio por Hora</h3>
+                <p class="text-sm text-gray-500 mb-4">¿A qué hora gastan más tus clientes?</p>
+                <div class="relative h-72 w-full"><canvas id="chartHourlyTicket"></canvas></div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script src="analytics.js"></script>
+</body>
+</html>
