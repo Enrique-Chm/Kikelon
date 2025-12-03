@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caja / POS - Dolce Mia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        
+        /* Scrollbar discreta */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        
+        .numpad-btn {
+            background: white;
+            border: 1px solid #e2e8f0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1e293b;
+            border-radius: 0.5rem;
+            transition: all 0.1s;
+        }
+        .numpad-btn:active { transform: scale(0.95); background: #f1f5f9; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="bg-slate-900 text-white p-4 flex justify-between items-center shadow-md z-10 flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-black tracking-wider text-red-500">CAJA PRINCIPAL</h1>
+            <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">Terminal #1</span>
+        </div>
+        <div class="flex gap-4 items-center">
+            <div class="text-right">
+                <p class="text-xs text-slate-400">Cajero</p>
+                <p class="font-bold">Ana López</p>
+            </div>
+            <button onclick="location.reload()" class="bg-slate-700 p-2 rounded hover:bg-slate-600">🔄</button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <div class="w-1/3 bg-white border-r border-gray-200 flex flex-col">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <input type="text" id="search-order" placeholder="Buscar orden # o cliente..." 
+                       class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-red-500 mb-3">
+                <div class="flex gap-2">
+                    <button onclick="filterOrders('pending')" class="flex-1 py-1 text-xs font-bold bg-blue-100 text-blue-700 rounded-full border border-blue-200">Por Cobrar</button>
+                    <button onclick="filterOrders('paid')" class="flex-1 py-1 text-xs font-bold bg-green-100 text-green-700 rounded-full border border-green-200">Pagadas</button>
+                </div>
+            </div>
+
+            <div id="orders-list" class="flex-1 overflow-y-auto p-2 space-y-2">
+                </div>
+        </div>
+
+        <div class="w-1/3 bg-gray-50 border-r border-gray-200 flex flex-col relative">
+            <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 z-10 bg-gray-50">
+                <span class="text-6xl mb-4">🧾</span>
+                <p>Selecciona una orden</p>
+            </div>
+
+            <div id="ticket-content" class="flex flex-col h-full hidden">
+                <div class="p-6 border-b border-dashed border-gray-300 bg-white shadow-sm">
+                    <div class="flex justify-between items-center mb-1">
+                        <h2 class="text-2xl font-black text-slate-800">Orden #<span id="ticket-id">000</span></h2>
+                        <span id="ticket-status" class="px-2 py-1 rounded text-xs font-bold uppercase bg-gray-200">Estado</span>
+                    </div>
+                    <p class="text-gray-500 text-sm">Cliente: <span id="ticket-client" class="font-bold text-gray-700">...</span></p>
+                    <p class="text-gray-400 text-xs mt-1" id="ticket-time">...</p>
+                </div>
+
+                <div id="ticket-items" class="flex-1 overflow-y-auto p-6 space-y-3 bg-white">
+                    </div>
+
+                <div class="p-6 bg-white border-t border-dashed border-gray-300">
+                    <div class="flex justify-between text-gray-500 mb-1">
+                        <span>Subtotal</span>
+                        <span id="ticket-subtotal">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-gray-500 mb-2">
+                        <span>Impuestos</span>
+                        <span id="ticket-tax">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-3xl font-black text-slate-800 pt-2 border-t border-gray-200">
+                        <span>Total</span>
+                        <span id="ticket-total" class="text-red-600">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-1/3 bg-slate-800 text-white flex flex-col p-6 relative">
+            <div id="payment-overlay" class="absolute inset-0 bg-slate-900/90 z-20 flex items-center justify-center text-gray-400">
+                <p>Selecciona una orden para cobrar</p>
+            </div>
+
+            <h3 class="text-xl font-bold mb-4 text-slate-300 flex items-center gap-2">
+                <span>💳</span> Método de Pago
+            </h3>
+
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <button onclick="setPaymentMethod('cash')" id="btn-cash" class="py-3 rounded-xl border-2 border-green-500 bg-green-500/20 text-green-400 font-bold hover:bg-green-500/30 transition">
+                    💵 Efectivo
+                </button>
+                <button onclick="setPaymentMethod('card')" id="btn-card" class="py-3 rounded-xl border-2 border-slate-600 text-slate-400 font-bold hover:border-blue-500 hover:text-blue-400 transition">
+                    💳 Tarjeta
+                </button>
+            </div>
+
+            <div id="cash-panel" class="flex-1 flex flex-col">
+                <div class="mb-4">
+                    <label class="text-xs text-slate-400 uppercase font-bold">Recibido:</label>
+                    <div class="flex items-center border-b-2 border-slate-600 pb-1">
+                        <span class="text-2xl text-slate-400 mr-2">$</span>
+                        <input type="number" id="amount-received" class="bg-transparent w-full text-4xl font-mono text-white outline-none text-right" placeholder="0.00" oninput="calculateChange()">
+                    </div>
+                </div>
+
+                <div class="mb-6 flex justify-between items-end">
+                    <span class="text-slate-400 font-bold">Cambio:</span>
+                    <span id="change-display" class="text-3xl font-mono text-green-400 font-bold">$0.00</span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 flex-1 mb-4">
+                    <button class="numpad-btn" onclick="addNum(1)">1</button>
+                    <button class="numpad-btn" onclick="addNum(2)">2</button>
+                    <button class="numpad-btn" onclick="addNum(3)">3</button>
+                    <button class="numpad-btn" onclick="addNum(4)">4</button>
+                    <button class="numpad-btn" onclick="addNum(5)">5</button>
+                    <button class="numpad-btn" onclick="addNum(6)">6</button>
+                    <button class="numpad-btn" onclick="addNum(7)">7</button>
+                    <button class="numpad-btn" onclick="addNum(8)">8</button>
+                    <button class="numpad-btn" onclick="addNum(9)">9</button>
+                    <button class="numpad-btn bg-red-100 text-red-600 border-red-200" onclick="clearNum()">C</button>
+                    <button class="numpad-btn" onclick="addNum(0)">0</button>
+                    <button class="numpad-btn" onclick="addNum('.')">.</button>
+                </div>
+            </div>
+
+            <div id="card-panel" class="hidden flex-1 flex flex-col items-center justify-center text-center">
+                <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                    <span class="text-4xl">📡</span>
+                </div>
+                <p class="text-lg font-bold">Esperando Terminal...</p>
+                <p class="text-slate-400 text-sm mt-2">Inserte o deslice la tarjeta</p>
+            </div>
+
+            <button id="btn-process-payment" onclick="processTransaction()" class="w-full py-4 bg-green-600 hover:bg-green-500 text-white text-xl font-bold rounded-xl shadow-lg transition transform active:scale-95 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed mt-auto">
+                COBRAR TICKET
+            </button>
+        </div>
+
+    </main>
+
+    <div id="success-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl w-full max-w-sm text-center">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl">✅</div>
+            <h3 class="text-2xl font-bold text-gray-800">¡Cobro Exitoso!</h3>
+            <p class="text-gray-500 mt-2">El ticket ha sido cerrado.</p>
+            <div class="mt-6 flex gap-3">
+                <button onclick="printTicket()" class="flex-1 py-3 bg-gray-200 font-bold rounded-lg hover:bg-gray-300">🖨️ Imprimir</button>
+                <button onclick="closeSuccessModal()" class="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="caja.js"></script>
+</body>
+</html>
